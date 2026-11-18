@@ -105,6 +105,8 @@ jobs:
   robot-smoke:
     name: Smoke Robot Framework
     needs: api-tests
+    # Em modo bug, roda mesmo com a API vermelha, para mostrar o que cada camada detecta.
+    if: ${{ !cancelled() && (needs.api-tests.result == 'success' || github.event.inputs.bug_mode == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -137,6 +139,8 @@ jobs:
   performance:
     name: Performance (Locust)
     needs: api-tests
+    # Em modo bug, roda mesmo com a API vermelha, para mostrar o que cada camada detecta.
+    if: ${{ !cancelled() && (needs.api-tests.result == 'success' || github.event.inputs.bug_mode == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -168,6 +172,8 @@ jobs:
   sqlserver-integration:
     name: Integração SQL Server
     needs: api-tests
+    # Em modo bug, roda mesmo com a API vermelha, para mostrar o que cada camada detecta.
+    if: ${{ !cancelled() && (needs.api-tests.result == 'success' || github.event.inputs.bug_mode == 'true') }}
     runs-on: ubuntu-latest
     services:
       sqlserver:
