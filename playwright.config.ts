@@ -18,7 +18,12 @@ export default defineConfig({
   },
   projects: [
     { name: 'api', testDir: './tests/api' },
-    { name: 'mobile', testDir: './tests/ui', use: { ...devices['Pixel 7'] } },
+    {
+      name: 'mobile',
+      testDir: './tests/ui',
+      // PW_CHANNEL=chrome usa o Chrome instalado (útil em SOs sem Chromium do Playwright, ex.: macOS 12).
+      use: { ...devices['Pixel 7'], channel: process.env.PW_CHANNEL || undefined },
+    },
     { name: 'db', testDir: './tests/db' },
   ],
   // Sobe o mock do autorizador e a API automaticamente. As variáveis do ambiente

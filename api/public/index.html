@@ -1,1 +1,263 @@
-<!doctype html><title>POS</title>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>POS Stone Demo</title>
+  <style>
+    :root {
+      --bg: #0b0f0d;
+      --screen: #141a17;
+      --panel: #1c2420;
+      --text: #f2f5f3;
+      --muted: #9aa8a1;
+      --green: #00c46a;
+      --green-dark: #00a159;
+      --red: #ff5a5f;
+      --amber: #ffb020;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      justify-content: center;
+    }
+    .pos {
+      width: 100%;
+      max-width: 400px;
+      min-height: 100%;
+      background: var(--screen);
+      padding: 20px 16px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    header { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 14px; }
+    header strong { color: var(--green); font-size: 18px; letter-spacing: .5px; }
+    label { font-size: 14px; color: var(--muted); }
+    .amount {
+      width: 100%;
+      font-size: 40px;
+      font-weight: 700;
+      text-align: right;
+      padding: 16px;
+      border-radius: 14px;
+      border: 2px solid var(--panel);
+      background: var(--panel);
+      color: var(--text);
+      outline: none;
+    }
+    .amount:focus { border-color: var(--green); }
+    .methods { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .method {
+      padding: 18px 0;
+      font-size: 18px;
+      font-weight: 600;
+      border-radius: 14px;
+      border: 2px solid var(--panel);
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .method[aria-pressed="true"] { border-color: var(--green); color: var(--green); }
+    select {
+      width: 100%;
+      font-size: 18px;
+      padding: 14px;
+      border-radius: 14px;
+      background: var(--panel);
+      color: var(--text);
+      border: 2px solid var(--panel);
+    }
+    .primary {
+      width: 100%;
+      padding: 20px;
+      font-size: 22px;
+      font-weight: 700;
+      border: 0;
+      border-radius: 16px;
+      background: var(--green);
+      color: #04140b;
+      cursor: pointer;
+    }
+    .primary:active { background: var(--green-dark); }
+    .primary:disabled { opacity: .5; cursor: wait; }
+    .card { background: var(--panel); border-radius: 16px; padding: 16px; }
+    .error { border-left: 6px solid var(--red); }
+    .receipt { border-top: 6px solid var(--green); font-family: ui-monospace, Menlo, Consolas, monospace; }
+    .receipt[data-status="declined"] { border-top-color: var(--red); }
+    .receipt[data-status="pending"] { border-top-color: var(--amber); }
+    .receipt h2 { margin: 0 0 8px; font-size: 22px; }
+    .receipt dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; }
+    .receipt dt { color: var(--muted); }
+    .receipt dd { margin: 0; text-align: right; }
+    .pending { color: var(--amber); font-weight: 700; }
+    .hidden { display: none !important; }
+    .secondary {
+      width: 100%;
+      margin-top: 12px;
+      padding: 16px;
+      font-size: 18px;
+      border-radius: 14px;
+      border: 2px solid var(--green);
+      background: transparent;
+      color: var(--green);
+      cursor: pointer;
+    }
+    .validation { color: var(--red); min-height: 1em; margin: 0; }
+  </style>
+</head>
+<body>
+  <main class="pos">
+    <header><strong>POS</strong><span>Terminal demo</span></header>
+
+    <section id="sale-form">
+      <label for="amount">Valor da venda</label>
+      <input id="amount" class="amount" data-testid="amount-input" inputmode="numeric" autocomplete="off" value="R$ 0,00" />
+    </section>
+
+    <section class="methods" role="group" aria-label="Forma de pagamento">
+      <button class="method" data-testid="method-credit" data-method="credit" aria-pressed="false">Crédito</button>
+      <button class="method" data-testid="method-debit" data-method="debit" aria-pressed="true">Débito</button>
+      <button class="method" data-testid="method-pix" data-method="pix" aria-pressed="false">Pix</button>
+    </section>
+
+    <section id="installments-wrapper" class="hidden">
+      <label for="installments">Parcelas</label>
+      <select id="installments" data-testid="installments-select"></select>
+    </section>
+
+    <p class="validation" id="validation" role="alert"></p>
+    <button class="primary" data-testid="pay-button" id="pay">Pagar</button>
+
+    <section class="card error hidden" data-testid="network-error" id="network-error" role="alert">
+      <strong>Falha de comunicação.</strong>
+      <p>Não foi possível confirmar a venda. Tente novamente — o cliente não será cobrado em dobro.</p>
+      <button class="secondary" data-testid="retry-button" id="retry">Tentar novamente</button>
+    </section>
+
+    <section class="card receipt hidden" data-testid="receipt" id="receipt">
+      <h2 data-testid="receipt-status" id="receipt-status"></h2>
+      <p class="pending hidden" data-testid="pending-message" id="pending-message">
+        Venda em processamento. Não cobre o cliente novamente.
+      </p>
+      <dl>
+        <dt>Valor</dt><dd data-testid="receipt-amount" id="receipt-amount"></dd>
+        <dt>Forma</dt><dd data-testid="receipt-method" id="receipt-method"></dd>
+        <dt>Autorização</dt><dd id="receipt-code">-</dd>
+        <dt>Transação</dt><dd id="receipt-id" style="font-size:11px"></dd>
+      </dl>
+      <button class="secondary" id="new-sale">Nova venda</button>
+    </section>
+  </main>
+
+  <script>
+    // Tela de maquininha: valor digitado em reais, enviado em centavos.
+    const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+    const METHOD_LABEL = { credit: 'Crédito', debit: 'Débito', pix: 'Pix' };
+    const STATUS_LABEL = { approved: 'APROVADA', declined: 'RECUSADA', pending: 'EM PROCESSAMENTO', cancelled: 'CANCELADA' };
+
+    const $ = (id) => document.getElementById(id);
+    const amountInput = $('amount');
+    const installmentsSelect = $('installments');
+
+    let amountCents = 0;
+    let method = 'debit';
+    // Uma Idempotency-Key por venda. É REUTILIZADA no "Tentar novamente"
+    // para que a API devolva a mesma transação em vez de cobrar de novo.
+    let currentSale = null; // { key, payload }
+
+    for (let i = 1; i <= 12; i++) {
+      const opt = document.createElement('option');
+      opt.value = String(i);
+      opt.textContent = i === 1 ? 'À vista' : `${i}x`;
+      installmentsSelect.appendChild(opt);
+    }
+
+    // Comportamento de maquininha: os dígitos entram pelos centavos (1, 15, 150 → R$ 1,50).
+    amountInput.addEventListener('input', () => {
+      const digits = amountInput.value.replace(/\D/g, '').slice(0, 10);
+      amountCents = Number(digits || '0');
+      amountInput.value = brl.format(amountCents / 100);
+    });
+
+    document.querySelectorAll('.method').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        method = btn.dataset.method;
+        document.querySelectorAll('.method').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+        $('installments-wrapper').classList.toggle('hidden', method !== 'credit');
+      });
+    });
+
+    function show(id, visible) { $(id).classList.toggle('hidden', !visible); }
+
+    function renderReceipt(tx) {
+      $('receipt').dataset.status = tx.status;
+      $('receipt-status').textContent = STATUS_LABEL[tx.status] || tx.status;
+      $('receipt-amount').textContent = brl.format(tx.amount / 100);
+      $('receipt-method').textContent =
+        tx.method === 'credit' && tx.installments > 1 ? `Crédito ${tx.installments}x` : METHOD_LABEL[tx.method];
+      $('receipt-code').textContent = tx.authorizationCode || '-';
+      $('receipt-id').textContent = tx.id;
+      show('pending-message', tx.status === 'pending');
+      show('receipt', true);
+    }
+
+    async function send() {
+      $('validation').textContent = '';
+      show('network-error', false);
+      show('receipt', false);
+      $('pay').disabled = true;
+      try {
+        const response = await fetch('/transactions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': currentSale.key,
+            'X-Correlation-Id': `pos-${currentSale.key}`,
+          },
+          body: JSON.stringify(currentSale.payload),
+        });
+        const body = await response.json();
+        if (response.ok) {
+          renderReceipt(body);
+          currentSale = null; // resposta definitiva recebida: próxima venda terá nova key
+        } else {
+          $('validation').textContent = body.message || 'Não foi possível concluir a venda.';
+          currentSale = null;
+        }
+      } catch (error) {
+        // Sem resposta: NÃO sabemos se a bandeira aprovou. Mantém a mesma key para o retry.
+        show('network-error', true);
+      } finally {
+        $('pay').disabled = false;
+      }
+    }
+
+    $('pay').addEventListener('click', () => {
+      if (amountCents <= 0) {
+        $('validation').textContent = 'Informe um valor maior que zero.';
+        return;
+      }
+      if (!currentSale) {
+        const payload = { amount: amountCents, method };
+        if (method === 'credit') payload.installments = Number(installmentsSelect.value);
+        currentSale = { key: crypto.randomUUID(), payload };
+      }
+      send();
+    });
+
+    $('retry').addEventListener('click', () => { if (currentSale) send(); });
+
+    $('new-sale').addEventListener('click', () => {
+      show('receipt', false);
+      amountCents = 0;
+      amountInput.value = brl.format(0);
+      amountInput.focus();
+    });
+  </script>
+</body>
+</html>
