@@ -97,7 +97,7 @@ Cada teste gera a própria `Idempotency-Key` (UUID), então os testes rodam **em
 | contract-tests | após quality | consumer gera o pact, provider verifica; publica no PactFlow se houver secrets | Sim |
 | ui-mobile-tests | após quality | fluxos da tela em Pixel 7, incluindo resposta perdida | Sim |
 | robot-smoke | após api-tests | smoke com a API "de verdade" rodando (como num ambiente) | Sim |
-| performance | após api-tests | 20 usuários por 30 s; reprova se p95 > 500 ms ou falhas > 1% | Sim (SLO da demo) |
+| performance | após api-tests | 20 usuários por 30 s; reprova se p95 > 500 ms ou falhas > 1% | Sim (SLO do projeto) |
 | sqlserver-integration | após api-tests | API com SQL Server real + validação direta por SELECT | Sim |
 
 **Modo bug** (`workflow_dispatch` com `bug_mode = true`): liga `BUG_MODE=1` e a API passa a ignorar a idempotência. Os jobs de API, UI e Robot ficam vermelhos, mostrando que a suíte pega a cobrança duplicada. O job SQL Server fica **verde** mesmo em modo bug, porque o índice único barra a duplicidade (a 2ª camada de defesa funcionando).
@@ -106,4 +106,4 @@ Cada teste gera a própria `Idempotency-Key` (UUID), então os testes rodam **em
 
 - Criptografia de cartão/PCI, EMV e comunicação real com a bandeira: dependem de hardware e certificação.
 - Conciliação/liquidação financeira: outro sistema. Aqui apenas garantimos que `pending` fica rastreável.
-- Segurança (autenticação do terminal, rate limiting): evolução natural, fora do objetivo da demo.
+- Segurança (autenticação do terminal, rate limiting): evolução natural, fora do escopo deste projeto.

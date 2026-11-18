@@ -1,6 +1,6 @@
 import type { NewTransaction, Transaction, TransactionRepository, TransactionStatus } from './transaction-repository';
 
-/** Implementação em memória (padrão, DB_MODE=memory). Ideal para testes rápidos e demo. */
+/** Implementação em memória (padrão, DB_MODE=memory). Ideal para testes rápidos e execução local. */
 export class MemoryTransactionRepository implements TransactionRepository {
   readonly mode = 'memory' as const;
   private readonly items = new Map<string, Transaction>();

@@ -30,10 +30,10 @@ function track(res: Response, tx: Transaction): void {
 }
 
 /**
- * ATENÇÃO — MODO BUG PROPOSITAL (somente para demonstração):
+ * ATENÇÃO — MODO BUG PROPOSITAL (injeção de defeito controlada):
  * com BUG_MODE=1 a verificação de idempotência é ignorada e TODA chamada cria uma
  * transação nova, reproduzindo o defeito mais caro de um POS: cobrança duplicada.
- * Serve para mostrar os testes @idempotencia (e a pipeline) ficando vermelhos.
+ * Serve para provar que os testes @idempotencia (e a pipeline) detectam o defeito.
  */
 function isBugMode(): boolean {
   return process.env.BUG_MODE === '1';

@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       bug_mode:
-        description: "Liga BUG_MODE=1 na API (ignora idempotência) para demonstrar a pipeline ficando vermelha"
+        description: "Liga BUG_MODE=1 na API (ignora idempotência) para provar que a suíte detecta cobrança duplicada (pipeline vermelha)"
         type: boolean
         default: false
 

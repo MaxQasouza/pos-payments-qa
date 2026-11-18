@@ -4,7 +4,7 @@ POS-120 — Teste de carga da Payments API com Locust.
 Pré-requisito: mock do autorizador + API rodando (npm run dev).
 Execução: npm run test:perf  (20 usuários, spawn 5/s, 30 s, relatório em reports/locust.html)
 
-Critérios de aceite (SLO da demo) — se violados, o processo sai com código 1:
+Critérios de aceite (SLO do projeto) — se violados, o processo sai com código 1:
   - taxa de falha <= 1%
   - p95 <= 500 ms
 """
