@@ -21,15 +21,20 @@
     "test:contract": "npm run test:contract:consumer && npm run test:contract:provider",
     "pact:publish": "tsx scripts/pact-publish.ts",
     "test:robot": "python -m robot --outputdir reports/robot robot/tests",
-    "test:perf": "python -m locust -f performance/locustfile.py --headless -u 20 -r 5 -t 30s --host http://localhost:3000 --html reports/locust.html --only-summary"
+    "test:perf": "python -m locust -f performance/locustfile.py --headless -u 20 -r 5 -t 30s --host http://localhost:3000 --html reports/locust.html --only-summary",
+    "db:init": "tsx scripts/db-init.ts",
+    "db:up": "docker compose up -d sqlserver",
+    "test:db": "cross-env DB_MODE=sqlserver playwright test --project=db"
   },
   "dependencies": {
-    "express": "^5.3.0"
+    "express": "^5.3.0",
+    "mssql": "^12.7.14"
   },
   "devDependencies": {
     "@pact-foundation/pact": "^17.1.4",
     "@playwright/test": "^1.65.1",
     "@types/express": "^5.0.6",
+    "@types/mssql": "^12.3.0",
     "@types/node": "^22.20.5",
     "concurrently": "^10.0.7",
     "cross-env": "^10.1.0",

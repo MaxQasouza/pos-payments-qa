@@ -1,0 +1,7 @@
+node_modules
+.venv
+.git
+reports
+pacts
+playwright-report
+test-results

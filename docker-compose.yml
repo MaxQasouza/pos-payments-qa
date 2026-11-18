@@ -1,0 +1,38 @@
+# Ambiente completo com SQL Server:  docker compose up -d --build
+# Só o banco (para rodar a API local com DB_MODE=sqlserver):  npm run db:up
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      # Senha APENAS de desenvolvimento. Sobrescreva com a variável MSSQL_SA_PASSWORD.
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-PosPayments@2026}
+    ports:
+      - "1433:1433"
+
+  authorizer-mock:
+    build: .
+    command: ["npm", "run", "start:mock"]
+    ports:
+      - "4010:4010"
+
+  api:
+    build: .
+    # db:init espera o SQL Server subir (retry) e cria banco/tabela antes da API.
+    command: ["sh", "-c", "npm run db:init && npm start"]
+    environment:
+      DB_MODE: sqlserver
+      DB_HOST: sqlserver
+      DB_PORT: "1433"
+      DB_USER: sa
+      DB_PASSWORD: ${MSSQL_SA_PASSWORD:-PosPayments@2026}
+      DB_NAME: PosPayments
+      DB_INIT_TIMEOUT_MS: "120000"
+      AUTHORIZER_URL: http://authorizer-mock:4010
+      ENABLE_TEST_ROUTES: "1"
+      BUG_MODE: ${BUG_MODE:-0}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - sqlserver
+      - authorizer-mock
