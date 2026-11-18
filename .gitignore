@@ -1,0 +1,11 @@
+node_modules/
+test-results/
+playwright-report/
+reports/
+pacts/
+.env
+__pycache__/
+output.xml
+log.html
+report.html
+.venv/
