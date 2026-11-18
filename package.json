@@ -19,7 +19,9 @@
     "test:contract:consumer": "vitest run tests/contract/consumer",
     "test:contract:provider": "vitest run tests/contract/provider",
     "test:contract": "npm run test:contract:consumer && npm run test:contract:provider",
-    "pact:publish": "tsx scripts/pact-publish.ts"
+    "pact:publish": "tsx scripts/pact-publish.ts",
+    "test:robot": "python -m robot --outputdir reports/robot robot/tests",
+    "test:perf": "python -m locust -f performance/locustfile.py --headless -u 20 -r 5 -t 30s --host http://localhost:3000 --html reports/locust.html --only-summary"
   },
   "dependencies": {
     "express": "^5.3.0"
