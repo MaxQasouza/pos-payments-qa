@@ -20,7 +20,7 @@ const STATUS = regex('^(approved|declined|pending|cancelled)$', 'approved');
 const ISO_DATETIME = datetime("yyyy-MM-dd'T'HH:mm:ss.SSSX", '2026-11-17T12:00:00.000Z');
 
 describe('Contrato pos-terminal → pos-payments-api', () => {
-  it('cria venda no débito aprovada', async () => {
+  it('POS-110 cria venda no débito aprovada', async () => {
     provider
       .given(STATES.noTransactionForKey)
       .uponReceiving('uma venda no débito de R$ 15,00')
@@ -53,7 +53,7 @@ describe('Contrato pos-terminal → pos-payments-api', () => {
     });
   });
 
-  it('consulta uma transação existente', async () => {
+  it('POS-111 consulta uma transação existente', async () => {
     provider
       .given(STATES.approvedTransactionExists)
       .uponReceiving('a consulta de uma transação aprovada')
@@ -80,7 +80,7 @@ describe('Contrato pos-terminal → pos-payments-api', () => {
     });
   });
 
-  it('consulta uma transação inexistente', async () => {
+  it('POS-112 consulta uma transação inexistente', async () => {
     provider
       .given(STATES.transactionDoesNotExist)
       .uponReceiving('a consulta de uma transação inexistente')
@@ -97,7 +97,7 @@ describe('Contrato pos-terminal → pos-payments-api', () => {
     });
   });
 
-  it('cancela uma transação aprovada', async () => {
+  it('POS-113 cancela uma transação aprovada', async () => {
     provider
       .given(STATES.approvedTransactionExists)
       .uponReceiving('o cancelamento de uma transação aprovada')

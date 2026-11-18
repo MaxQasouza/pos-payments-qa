@@ -1,0 +1,204 @@
+name: CI - pos-payments-qa
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      bug_mode:
+        description: "Liga BUG_MODE=1 na API (ignora idempotência) para demonstrar a pipeline ficando vermelha"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+  PYTHON_VERSION: "3.11"
+  # Só vira "1" quando disparado manualmente com bug_mode = true.
+  BUG_MODE: ${{ github.event.inputs.bug_mode == 'true' && '1' || '0' }}
+
+jobs:
+  quality:
+    name: Qualidade (typecheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+
+  api-tests:
+    name: Testes de API (Playwright)
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # O webServer do Playwright sobe o mock e a API (herdando BUG_MODE).
+      - run: npx playwright test --project=api
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-api
+          path: playwright-report
+          retention-days: 14
+
+  contract-tests:
+    name: Testes de contrato (Pact)
+    needs: quality
+    runs-on: ubuntu-latest
+    env:
+      PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+      PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+      GIT_SHA: ${{ github.sha }}
+      GIT_BRANCH: ${{ github.head_ref || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run test:contract
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pacts
+          path: pacts
+          retention-days: 14
+      - name: Publicar pacts no PactFlow
+        if: ${{ env.PACT_BROKER_BASE_URL != '' && env.PACT_BROKER_TOKEN != '' }}
+        run: npm run pact:publish
+
+  ui-mobile-tests:
+    name: Testes de UI mobile (Pixel 7)
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --project=mobile
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-mobile
+          path: |
+            playwright-report
+            test-results
+          retention-days: 14
+
+  robot-smoke:
+    name: Smoke Robot Framework
+    needs: api-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: robot/requirements.txt
+      - run: npm ci
+      - run: pip install -r robot/requirements.txt
+      - name: Subir mock e API em background
+        run: |
+          nohup npm run start:mock > mock.log 2>&1 &
+          nohup npm start > api.log 2>&1 &
+          npx wait-on -t 60000 http://localhost:4010/health http://localhost:3000/health
+      - run: npm run test:robot
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: robot-report
+          path: |
+            reports/robot
+            api.log
+          retention-days: 14
+
+  performance:
+    name: Performance (Locust)
+    needs: api-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: robot/requirements.txt
+      - run: npm ci
+      - run: pip install -r robot/requirements.txt
+      - name: Subir mock e API em background
+        run: |
+          nohup npm run start:mock > mock.log 2>&1 &
+          LOG_SILENT=1 nohup npm start > api.log 2>&1 &
+          npx wait-on -t 60000 http://localhost:4010/health http://localhost:3000/health
+      # Sai com código 1 se taxa de falha > 1% ou p95 > 500 ms.
+      - run: npm run test:perf
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: locust-report
+          path: reports/locust.html
+          retention-days: 14
+
+  sqlserver-integration:
+    name: Integração SQL Server
+    needs: api-tests
+    runs-on: ubuntu-latest
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: PosPayments@2026
+        ports:
+          - 1433:1433
+    env:
+      DB_MODE: sqlserver
+      DB_HOST: localhost
+      DB_PORT: "1433"
+      DB_USER: sa
+      DB_PASSWORD: PosPayments@2026
+      DB_NAME: PosPayments
+      DB_INIT_TIMEOUT_MS: "120000"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # Espera o SQL Server subir (retry) e cria banco, tabela e índice único.
+      - run: npm run db:init
+      # test:api + test:db numa execução só: o webServer sobe a API com DB_MODE=sqlserver.
+      - run: npx playwright test --project=api --project=db
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-sqlserver
+          path: playwright-report
+          retention-days: 14

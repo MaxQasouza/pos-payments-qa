@@ -31,6 +31,7 @@ export default defineConfig({
   webServer: [
     {
       command: 'npm run start:mock',
+      env: { LOG_SILENT: '1' },
       url: `${MOCK_URL}/health`,
       reuseExistingServer: !isCI,
       timeout: 60_000,

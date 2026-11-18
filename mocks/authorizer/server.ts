@@ -12,6 +12,13 @@ export const DECLINED_CENTS = 99;
 export const SLOW_CENTS = 98;
 export const SLOW_DELAY_MS = 3000;
 
+/** Log JSON no mesmo formato da API: o correlationId recebido liga POS → API → autorizador. */
+function logDecision(correlationId: string | undefined, outcome: string) {
+  if (process.env.LOG_SILENT === '1') return;
+  const entry = { timestamp: new Date().toISOString(), level: 'info', service: 'authorizer-mock', correlationId, outcome };
+  process.stdout.write(JSON.stringify(entry) + '\n');
+}
+
 export function createAuthorizerMock() {
   const app = express();
   app.use(express.json());
@@ -24,7 +31,10 @@ export function createAuthorizerMock() {
     const amount = Number(req.body?.amount);
     const cents = amount % 100;
 
+    const correlationId = req.header('X-Correlation-Id');
+
     if (cents === DECLINED_CENTS) {
+      logDecision(correlationId, 'declined');
       res.json({ approved: false, reason: 'CARTAO_RECUSADO' });
       return;
     }
@@ -34,6 +44,7 @@ export function createAuthorizerMock() {
     }
 
     const authorizationCode = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
+    logDecision(correlationId, cents === SLOW_CENTS ? 'approved_slow' : 'approved');
     res.json({ approved: true, authorizationCode });
   });
 

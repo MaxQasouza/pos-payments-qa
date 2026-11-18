@@ -1,5 +1,5 @@
 """
-Teste de carga da Payments API com Locust.
+POS-120 — Teste de carga da Payments API com Locust.
 
 Pré-requisito: mock do autorizador + API rodando (npm run dev).
 Execução: npm run test:perf  (20 usuários, spawn 5/s, 30 s, relatório em reports/locust.html)
